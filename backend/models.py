@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer,String,ForeignKey,DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, Date, DateTime
 from database import Base
 from datetime import datetime
 
@@ -20,12 +20,15 @@ class Enrollment(Base):
 
 class StudyPlanner(Base):
     __tablename__ = "study_planner"
+    __table_args__ = {"extend_existing": True}
+
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    course_id = Column(Integer, ForeignKey("courses.id"))
+    user_id = Column(Integer)
+    course_id = Column(Integer)
     study_date = Column(String(20))
-    topic = Column(String(100))
+    topic = Column(String(255))
+    status = Column(String(50), default="Pending")
 
 class Course(Base):
     __tablename__ = "courses"
@@ -47,26 +50,35 @@ class Progress(Base):
     total_topics = Column(Integer, default=10)
     status = Column(String(50), default="In Progress")
     
+
+
 class Assignment(Base):
     __tablename__ = "assignments"
 
-    id = Column(Integer, primary_key=True, index=True)
-    subject_code = Column(String(50))
-    teacher_id = Column(Integer, ForeignKey("users.id"))
-    title = Column(String(100))
-    description = Column(String(255))
-    due_date = Column(String(20))
+    __table_args__ = {"extend_existing": True}
 
+    id = Column(Integer, primary_key=True, index=True)
+
+    course_id = Column(Integer)   # ✅ ADD THIS
+    subject_code = Column(String(100))
+
+    teacher_id = Column(Integer)
+    title = Column(String(255))
+    description = Column(String(500))
+    due_date = Column(String(50))
 
 class Submission(Base):
     __tablename__ = "submissions"
 
+    __table_args__ = {"extend_existing": True}
+
     id = Column(Integer, primary_key=True, index=True)
-    assignment_id = Column(Integer, ForeignKey("assignments.id"))
-    student_id = Column(Integer, ForeignKey("users.id"))
+
+    assignment_id = Column(Integer)
+    student_id = Column(Integer)
+
     file_url = Column(String(255))
-    content = Column(String(255), nullable= True)
-    status = Column(String(50), default="Submitted")
+    submitted_at = Column(String(50))
 
 class Quiz(Base):
     __tablename__ = "quizzes"
@@ -101,9 +113,8 @@ class QuizResult(Base):
 class Material(Base):
     __tablename__ = "materials"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     subject_code = Column(String(50))
-    teacher_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String(100))
     file_url = Column(String(255))
 
@@ -111,6 +122,34 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
+    message = Column(String(255))
+
+class StudyLog(Base):
+    __tablename__ = "study_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    course_id = Column(Integer, ForeignKey("courses.id"))
+    study_date = Column(Date)
+    hours = Column(Float, default=0)
+    topic = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     message = Column(String(255))
-    is_read = Column(Integer, default=0)  # 0 = unread, 1 = read
+    reminder_date = Column(Date)
+    is_read = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserStreak(Base):
+    __tablename__ = "user_streaks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_study_date = Column(Date, nullable=True)

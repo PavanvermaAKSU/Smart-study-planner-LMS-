@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List
+from datetime import date
 
 class UserCreate(BaseModel):
     name:str
@@ -42,7 +43,9 @@ class ProgressUpdate(BaseModel):
     course_id: int
     completed_topics: int
 
+
 class AssignmentCreate(BaseModel):
+    course_id: int
     subject_code: str
     teacher_id: int
     title: str
@@ -89,8 +92,6 @@ class Notification(BaseModel):
     message: str
 
 
-from pydantic import BaseModel
-
 class NotificationOut(BaseModel):
     id: int
     message: str
@@ -105,3 +106,28 @@ class AutoQuizCreate(BaseModel):
     title: str
     difficulty: str
     num_questions: int
+
+class StudyLogCreate(BaseModel):
+    user_id: int
+    course_id: int
+    study_date: date
+    hours: float
+    topic: str
+
+class SmartTargetOut(BaseModel):
+    course_id: int
+    course_title: str
+    target_topics_per_day: float
+    recommended_hours_per_day: float
+    remaining_topics: int
+    days_left: int
+
+
+class ReminderOut(BaseModel):
+    id: int
+    message: str
+    reminder_date: date
+    is_read: int
+
+    class Config:
+        from_attributes = True

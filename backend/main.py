@@ -1,9 +1,11 @@
-from fastapi import FastAPI,Depends,File,UploadFile,HTTPException,Form
+from fastapi import FastAPI,Depends,File,UploadFile,HTTPException,Form,Body
 from database import engine,get_db
 import models
 import schemas
+from models import Notification
 import random
-from datetime import datetime, timedelta
+import shutil
+from datetime import datetime, timedelta,date
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -35,121 +37,114 @@ models.Base.metadata.create_all(bind=engine)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-QUESTION_BANK = {
-    "python": [
-        {
-            "question": "What is the correct extension of a Python file?",
-            "options": [".py", ".python", ".pt", ".pyt"],
-            "correct": ".py"
-        },
-        {
-            "question": "Which keyword is used to define a function in Python?",
-            "options": ["func", "define", "def", "function"],
-            "correct": "def"
-        },
-        {
-            "question": "Which data type is immutable in Python?",
-            "options": ["list", "set", "dictionary", "tuple"],
-            "correct": "tuple"
-        },
-        {
-            "question": "Which loop is used to iterate over a sequence in Python?",
-            "options": ["repeat", "for", "foreach", "iterate"],
-            "correct": "for"
-        },
-        {
-            "question": "Which function is used to display output in Python?",
-            "options": ["echo()", "display()", "print()", "show()"],
-            "correct": "print()"
-        },
-        {
-            "question": "Which symbol is used for comments in Python?",
-            "options": ["//", "#", "/*", "--"],
-            "correct": "#"
-        }
-    ],
-    "dbms": [
-        {
-            "question": "Which key uniquely identifies a record in a table?",
-            "options": ["Foreign Key", "Candidate Key", "Primary Key", "Composite Key"],
-            "correct": "Primary Key"
-        },
-        {
-            "question": "SQL stands for?",
-            "options": ["Structured Query Language", "Sequential Query Language", "Simple Query Language", "Standard Question Language"],
-            "correct": "Structured Query Language"
-        },
-        {
-            "question": "Which normal form removes partial dependency?",
-            "options": ["1NF", "2NF", "3NF", "BCNF"],
-            "correct": "2NF"
-        },
-        {
-            "question": "Which command is used to remove a table in SQL?",
-            "options": ["DELETE TABLE", "REMOVE TABLE", "DROP TABLE", "CLEAR TABLE"],
-            "correct": "DROP TABLE"
-        },
-        {
-            "question": "Which SQL clause is used to filter rows?",
-            "options": ["SORT BY", "WHERE", "GROUP BY", "HAVING"],
-            "correct": "WHERE"
-        }
-    ],
-    "os": [
-        {
-            "question": "What is the main function of an operating system?",
-            "options": ["Compile code", "Manage hardware and software resources", "Design websites", "Store internet data"],
-            "correct": "Manage hardware and software resources"
-        },
-        {
-            "question": "Which scheduling algorithm works on a first come first serve basis?",
-            "options": ["Round Robin", "FCFS", "Priority", "SJF"],
-            "correct": "FCFS"
-        },
-        {
-            "question": "A process in execution is called?",
-            "options": ["Program", "Instruction", "Task", "Process"],
-            "correct": "Process"
-        },
-        {
-            "question": "Which memory is fastest?",
-            "options": ["RAM", "ROM", "Cache", "Hard Disk"],
-            "correct": "Cache"
-        },
-        {
-            "question": "Deadlock occurs when?",
-            "options": ["CPU is idle", "Processes wait forever for resources", "Memory is full", "Keyboard stops working"],
-            "correct": "Processes wait forever for resources"
-        }
-    ],
-    "java": [
-        {
-            "question": "Which keyword is used to inherit a class in Java?",
-            "options": ["implements", "extends", "inherits", "super"],
-            "correct": "extends"
-        },
-        {
-            "question": "Java is?",
-            "options": ["Platform dependent", "Platform independent", "Only for web", "Only for mobile"],
-            "correct": "Platform independent"
-        },
-        {
-            "question": "Which method is the entry point of a Java program?",
-            "options": ["start()", "run()", "main()", "init()"],
-            "correct": "main()"
-        },
-        {
-            "question": "Which package is automatically imported in Java?",
-            "options": ["java.util", "java.lang", "java.io", "java.net"],
-            "correct": "java.lang"
-        },
-        {
-            "question": "Which of these is not an OOP concept?",
-            "options": ["Encapsulation", "Polymorphism", "Compilation", "Inheritance"],
-            "correct": "Compilation"
-        }
-    ]
-}
+def recalculate_progress_intelligent(student_id: int, course_id: int, db: Session):
+    course = db.query(models.Course).filter(
+        models.Course.id == course_id
+    ).first()
+
+    if not course:
+        return None
+
+    subject_code = course.subject_code
+
+    assignment_count = db.query(models.Assignment).filter(
+        models.Assignment.subject_code == subject_code
+    ).count()
+
+    submission_count = db.query(models.Submission).join(
+        models.Assignment,
+        models.Submission.assignment_id == models.Assignment.id
+    ).filter(
+        models.Submission.student_id == student_id,
+        models.Assignment.subject_code == subject_code
+    ).count()
+
+    quiz_results = db.query(models.QuizResult).join(
+        models.Quiz,
+        models.QuizResult.quiz_id == models.Quiz.id
+    ).filter(
+        models.QuizResult.student_id == student_id,
+        models.Quiz.course_id == course_id
+    ).all()
+
+    avg_quiz_score = 0
+    if quiz_results:
+        avg_quiz_score = sum(q.score for q in quiz_results) / len(quiz_results)
+
+    study_logs = db.query(models.StudyLog).filter(
+        models.StudyLog.user_id == student_id,
+        models.StudyLog.course_id == course_id
+    ).all()
+
+    total_hours = sum(log.hours for log in study_logs)
+
+    assignment_percent = 0
+    if assignment_count > 0:
+        assignment_percent = (submission_count / assignment_count) * 100
+
+    quiz_percent = min(avg_quiz_score * 10, 100)   # if score out of 10
+    study_percent = min(total_hours * 10, 100)
+
+    total_progress = round(
+        (assignment_percent * 0.4) +
+        (quiz_percent * 0.4) +
+        (study_percent * 0.2)
+    )
+
+    progress = db.query(models.Progress).filter(
+        models.Progress.user_id == student_id,
+        models.Progress.course_id == course_id
+    ).first()
+
+    if not progress:
+        progress = models.Progress(
+            user_id=student_id,
+            course_id=course_id,
+            completed_topics=0,
+            total_topics=10,
+            status="In Progress"
+        )
+        db.add(progress)
+        db.commit()
+        db.refresh(progress)
+
+    progress.completed_topics = min(round((total_progress / 100) * progress.total_topics), progress.total_topics)
+    progress.status = "Completed" if progress.completed_topics >= progress.total_topics else "In Progress"
+
+    db.commit()
+    db.refresh(progress)
+    return progress
+
+
+def create_daily_reminders_for_user(user_id: int, db: Session):
+    today = date.today()
+
+    existing_today = db.query(models.Reminder).filter(
+        models.Reminder.user_id == user_id,
+        models.Reminder.reminder_date == today
+    ).count()
+
+    if existing_today > 0:
+        return
+
+    plans = db.query(models.StudyPlanner).filter(
+        models.StudyPlanner.user_id == user_id,
+        models.StudyPlanner.study_date == today.strftime("%Y-%m-%d")
+    ).all()
+
+    if plans:
+        message = f"You have {len(plans)} study task(s) planned for today."
+    else:
+        message = "You have no study plan for today. Add today's study target."
+
+    reminder = models.Reminder(
+        user_id=user_id,
+        message=message,
+        reminder_date=today,
+        is_read=0
+    )
+    db.add(reminder)
+    db.commit()
 
 def update_progress_auto(user_id: int, course_id: int, increment: int, db: Session):
     prog = db.query(models.Progress).filter(
@@ -389,26 +384,64 @@ def enroll_course(data: schemas.EnrollmentCreate, db: Session = Depends(get_db))
 
 @app.post("/create-plan")
 def create_plan(data: schemas.PlannerCreate, db: Session = Depends(get_db)):
-
     plan = models.StudyPlanner(
         user_id=data.user_id,
         course_id=data.course_id,
         study_date=data.study_date,
-        topic=data.topic
+        topic=data.topic,
+        status="Pending"
     )
 
     db.add(plan)
     db.commit()
     db.refresh(plan)
 
-    return {"message": "Study plan created successfully"}
+    return {
+        "message": "Plan created successfully",
+        "plan_id": plan.id
+    }
+
 
 @app.get("/planner/{user_id}")
-def get_plan(user_id: int, db: Session = Depends(get_db)):
+def get_planner(user_id: int, db: Session = Depends(get_db)):
+    plans = db.query(models.StudyPlanner).filter(
+        models.StudyPlanner.user_id == user_id
+    ).order_by(models.StudyPlanner.study_date.asc()).all()
 
-    plans = db.query(models.StudyPlanner).filter(models.StudyPlanner.user_id == user_id).all()
+    today = date.today()
 
-    return {"plans": plans}
+    result = []
+
+    for p in plans:
+        status = p.status
+
+        try:
+            plan_date = datetime.strptime(p.study_date, "%Y-%m-%d").date()
+            if plan_date < today and p.status == "Pending":
+                p.status = "Expired"
+                status = "Expired"
+        except:
+            pass
+
+        course = db.query(models.Course).filter(
+            models.Course.id == p.course_id
+        ).first()
+
+        result.append({
+            "id": p.id,
+            "user_id": p.user_id,
+            "course_id": p.course_id,
+            "course_title": course.title if course else "Unknown Course",
+            "subject_code": course.subject_code if course else "",
+            "study_date": p.study_date,
+            "topic": p.topic,
+            "status": status
+        })
+
+    db.commit()
+
+    return {"plans": result}
+
 
 @app.post("/auto-plan")
 def auto_plan(data: schemas.AutoPlannerCreate, db: Session = Depends(get_db)):
@@ -476,6 +509,23 @@ def update_progress(data: schemas.ProgressUpdate, db: Session = Depends(get_db))
     db.commit()
     return {"message": "Progress updated successfully"}
 
+@app.put("/complete-plan/{plan_id}")
+def complete_plan(plan_id: int, db: Session = Depends(get_db)):
+    plan = db.query(models.StudyPlanner).filter(
+        models.StudyPlanner.id == plan_id
+    ).first()
+
+    today = date.today()
+    plan_date = datetime.strptime(plan.study_date, "%Y-%m-%d").date()
+
+    if plan_date < today:
+        return {"message": "Plan expired. Cannot complete"}
+
+    plan.status = "Completed"
+    db.commit()
+
+    return {"message": "Marked completed"}
+
 @app.get("/enrollments/{user_id}")
 def get_enrollments(user_id: int, db: Session = Depends(get_db)):
     enrollments = db.query(models.Enrollment).filter(
@@ -524,47 +574,28 @@ def get_progress(user_id: int, db: Session = Depends(get_db)):
 
 @app.post("/create-assignment")
 def create_assignment(data: schemas.AssignmentCreate, db: Session = Depends(get_db)):
-    teacher = db.query(models.User).filter(
-        models.User.id == data.teacher_id,
-        models.User.role == "teacher"
-    ).first()
-
-    if not teacher:
-        return {"message": "Only teacher can create assignment"}
-
     assignment = models.Assignment(
+        course_id=data.course_id,
         subject_code=data.subject_code,
         teacher_id=data.teacher_id,
         title=data.title,
         description=data.description,
         due_date=data.due_date
     )
-
     db.add(assignment)
     db.commit()
     db.refresh(assignment)
 
-    # notifications to enrolled students of same subject
-    courses = db.query(models.Course).filter(
-        models.Course.subject_code == data.subject_code
+    return {"message": "Assignment created successfully"}
+
+
+@app.get("/assignments/{subject_code}")
+def get_assignments(subject_code: str, db: Session = Depends(get_db)):
+    assignments = db.query(models.Assignment).filter(
+        models.Assignment.subject_code == subject_code
     ).all()
 
-    for course in courses:
-        students = db.query(models.Enrollment).filter(
-            models.Enrollment.course_id == course.id
-        ).all()
-
-        for s in students:
-            notif = models.Notification(
-                user_id=s.user_id,
-                message=f"New assignment in {data.subject_code}: {data.title}",
-                is_read=0
-            )
-            db.add(notif)
-
-    db.commit()
-
-    return {"message": "Assignment created successfully"}
+    return {"assignments": assignments}
 
 @app.post("/submit-assignment")
 def submit_assignment(
@@ -573,14 +604,6 @@ def submit_assignment(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    student = db.query(models.User).filter(
-        models.User.id == student_id,
-        models.User.role == "student"
-    ).first()
-
-    if not student:
-        return {"message": "Only student can submit assignment"}
-
     assignment = db.query(models.Assignment).filter(
         models.Assignment.id == assignment_id
     ).first()
@@ -596,47 +619,32 @@ def submit_assignment(
     if existing:
         return {"message": "Assignment already submitted"}
 
-    allowed_types = [
-        "application/pdf",
-        "image/png",
-        "image/jpeg",
-        "image/jpg"
-    ]
-
-    if file.content_type not in allowed_types:
-        return {"message": "Only PDF, PNG, JPG, JPEG files are allowed"}
-
     os.makedirs("uploads/assignments", exist_ok=True)
 
-    safe_filename = f"{student_id}_{assignment_id}_{file.filename}"
-    file_path = f"uploads/assignments/{safe_filename}"
+    filename = f"{student_id}_{assignment_id}_{file.filename}"
+    filepath = os.path.join("uploads/assignments", filename)
 
-    with open(file_path, "wb") as f:
+    with open(filepath, "wb") as f:
         f.write(file.file.read())
 
     submission = models.Submission(
         assignment_id=assignment_id,
         student_id=student_id,
-        file_url=f"/uploads/assignments/{safe_filename}",
-        status="Submitted"
+        file_url=f"/uploads/assignments/{filename}",
+        submitted_at=str(datetime.now())
     )
 
     db.add(submission)
     db.commit()
     db.refresh(submission)
 
-    # progress update
-    course = db.query(models.Course).filter(
-        models.Course.subject_code == assignment.subject_code
-    ).first()
-
-    if course:
-        update_progress_auto(student_id, course.id, 1, db)
+    recalculate_progress_intelligent(student_id, assignment.course_id, db)
 
     return {
         "message": "Assignment submitted successfully",
         "file_url": submission.file_url
     }
+
 
 @app.get("/assignment-submissions/{assignment_id}")
 def get_assignment_submissions(assignment_id: int, db: Session = Depends(get_db)):
@@ -645,18 +653,14 @@ def get_assignment_submissions(assignment_id: int, db: Session = Depends(get_db)
     ).all()
 
     result = []
-
-    for sub in submissions:
-        student = db.query(models.User).filter(
-            models.User.id == sub.student_id
-        ).first()
+    for s in submissions:
+        student = db.query(models.User).filter(models.User.id == s.student_id).first()
 
         result.append({
-            "id": sub.id,
-            "student_id": sub.student_id,
+            "id": s.id,
             "student_name": student.name if student else "Unknown",
-            "file_url": sub.file_url,
-            "status": sub.status
+            "file_url": s.file_url,
+            "submitted_at": s.submitted_at
         })
 
     return {"submissions": result}
@@ -787,38 +791,31 @@ def get_quizzes_by_course_details(course_id: int, db: Session = Depends(get_db))
     return {"quizzes": result}
 
 
+UPLOAD_DIR = "uploads"
+
 @app.post("/upload-material")
-def upload_material(data: schemas.MaterialCreate, db: Session = Depends(get_db)):
+def upload_material(
+    subject_code: str = Form(...),
+    title: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+
+    file_path = f"{UPLOAD_DIR}/{file.filename}"
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
     material = models.Material(
-        subject_code=data.subject_code,
-        title=data.title,
-        file_url=data.file_url
+        subject_code=subject_code,
+        title=title,
+        file_url=file_path
     )
 
     db.add(material)
     db.commit()
 
-    # 🔔 Notifications (subject_code ke basis pe)
-    courses = db.query(models.Course).filter(
-        models.Course.subject_code == data.subject_code
-    ).all()
-
-    for course in courses:
-        students = db.query(models.Enrollment).filter(
-            models.Enrollment.course_id == course.id
-        ).all()
-
-        for s in students:
-            notif = models.Notification(
-                user_id=s.user_id,
-                message=f"New material uploaded in {data.subject_code}: {data.title}"
-            )
-            db.add(notif)
-
-    db.commit()
-
-    return {"message": "Material uploaded successfully"}
+    return {"message": "Material uploaded"}
 
 @app.get("/materials/{subject_code}")
 def get_materials(subject_code: str, db: Session = Depends(get_db)):
@@ -826,7 +823,7 @@ def get_materials(subject_code: str, db: Session = Depends(get_db)):
         models.Material.subject_code == subject_code
     ).all()
 
-    return materials
+    return {"materials": materials}
 
 @app.get("/secure-data")
 def secure_data(user=Depends(get_current_user)):
@@ -872,105 +869,75 @@ def analytics(teacher_id: int, db: Session = Depends(get_db)):
 
 @app.get("/smart-plan-advanced/{user_id}")
 def smart_plan_advanced(user_id: int, db: Session = Depends(get_db)):
-    progress_data = db.query(models.Progress).filter(
+
+    from datetime import datetime, timedelta
+
+    today = datetime.now().date()
+
+    courses = db.query(models.Course).all()
+    enrollments = db.query(models.Enrollment).filter(
+        models.Enrollment.user_id == user_id
+    ).all()
+
+    progress = db.query(models.Progress).filter(
         models.Progress.user_id == user_id
     ).all()
 
-    courses = db.query(models.Course).all()
     assignments = db.query(models.Assignment).all()
 
     course_map = {c.id: c for c in courses}
-    today = datetime.today()
+    progress_map = {p.course_id: p for p in progress}
 
-    smart_tasks = []
-    weakest_course = None
-    weakest_percent = 101
-    total_study_hours = 0
+    tasks = []
+    today_tasks = []
 
-    for p in progress_data:
-        course = course_map.get(p.course_id)
-        if not course:
+    for e in enrollments:
+        course = course_map.get(e.course_id)
+        p = progress_map.get(e.course_id)
+
+        if not course or not p:
             continue
 
-        completed = p.completed_topics or 0
-        total = p.total_topics or 10
-        remaining = max(total - completed, 0)
-        percent = round((completed / total) * 100, 2) if total > 0 else 0
+        percent = int((p.completed_topics / p.total_topics) * 100) if p.total_topics else 0
 
-        # weakest course
-        if percent < weakest_percent:
-            weakest_percent = percent
-            weakest_course = course.title
+        # 🔥 assignment fix (subject_code based)
+        related_assignments = [
+            a for a in assignments if a.subject_code == course.subject_code
+        ]
 
-        # nearest assignment deadline
-        related_assignments = [a for a in assignments if a.course_id == p.course_id]
-        nearest_deadline = None
-        min_days = 9999
+        deadline = None
+        if related_assignments:
+            deadline = related_assignments[0].due_date
 
-        for a in related_assignments:
-            try:
-                due = datetime.strptime(a.due_date, "%Y-%m-%d")
-                days_left = (due - today).days
-                if days_left >= 0 and days_left < min_days:
-                    min_days = days_left
-                    nearest_deadline = a.due_date
-            except:
-                pass
-
-        if nearest_deadline is None:
-            min_days = 7
-
-        urgency_score = round((remaining / max(min_days, 1)), 2)
-
-        if urgency_score >= 2:
+        priority = "Low"
+        if percent < 40:
             priority = "High"
-            daily_hours = 3
-            color = "red"
-        elif urgency_score >= 1:
+        elif percent < 70:
             priority = "Medium"
-            daily_hours = 2
-            color = "orange"
-        else:
-            priority = "Low"
-            daily_hours = 1
-            color = "green"
 
-        total_study_hours += daily_hours
+        task = {
+            "course_title": course.title,
+            "subject_code": course.subject_code,
+            "task": "Revise + Practice",
+            "priority": priority,
+            "progress_percent": percent,
+            "deadline": deadline,
+            "daily_hours": 2 if priority == "High" else 1.5,
+            "date": str(today)
+        }
 
-        # create only next 3 useful tasks per course
-        task_count = min(remaining, 3)
+        tasks.append(task)
+        today_tasks.append(task)
 
-        for i in range(task_count):
-            task_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
-            smart_tasks.append({
-                "course_id": p.course_id,
-                "course_title": course.title,
-                "subject_code": course.subject_code,
-                "date": task_date,
-                "task": f"Complete Topic {completed + i + 1}",
-                "priority": priority,
-                "daily_hours": daily_hours,
-                "deadline": nearest_deadline,
-                "progress_percent": percent,
-                "color": color
-            })
-
-    priority_order = {"High": 1, "Medium": 2, "Low": 3}
-    smart_tasks = sorted(
-        smart_tasks,
-        key=lambda x: (priority_order[x["priority"]], x["date"])
-    )
-
-    today_str = today.strftime("%Y-%m-%d")
-    todays_tasks = [t for t in smart_tasks if t["date"] == today_str]
+    weakest = sorted(tasks, key=lambda x: x["progress_percent"])[:1]
 
     return {
-        "today": today_str,
-        "weakest_course": weakest_course,
-        "recommended_hours_today": total_study_hours,
-        "today_tasks_count": len(todays_tasks),
-        "today_tasks": todays_tasks,
-        "all_tasks": smart_tasks
+        "today": str(today),
+        "weakest_course": weakest[0]["course_title"] if weakest else "N/A",
+        "recommended_hours_today": sum([t["daily_hours"] for t in today_tasks]),
+        "today_tasks_count": len(today_tasks),
+        "today_tasks": today_tasks,
+        "all_tasks": tasks
     }
 
 @app.post("/update-progress-auto")
@@ -998,27 +965,6 @@ def update_progress_auto(user_id: int, course_id: int, increment: int, db: Sessi
     db.commit()
 
     return {"message": "Progress updated automatically"}
-
-@app.post("/submit-assignment")
-def submit_assignment(data: schemas.SubmissionCreate, db: Session = Depends(get_db)):
-
-    assignment = db.query(models.Assignment).filter(
-        models.Assignment.id == data.assignment_id
-    ).first()
-
-    submission = models.Submission(
-        assignment_id=data.assignment_id,
-        student_id=data.student_id,
-        content=data.content
-    )
-
-    db.add(submission)
-    db.commit()
-
-    # 👉 AUTO PROGRESS
-    update_progress_auto(data.student_id, assignment.course_id, 1, db)
-
-    return {"message": "Assignment submitted + Progress updated"}
 
 @app.post("/submit-quiz")
 def submit_quiz(data: schemas.QuizSubmit, db: Session = Depends(get_db)):
@@ -1052,81 +998,318 @@ def submit_quiz(data: schemas.QuizSubmit, db: Session = Depends(get_db)):
     db.add(result)
     db.commit()
 
-    # progress me score ke hisab se add
-    increment = 1
-    if score >= len(questions) * 0.7:
-        increment = 2
-
-    update_progress_auto(data.student_id, quiz.course_id, increment, db)
+    progress = recalculate_progress_intelligent(data.student_id, quiz.course_id, db)
 
     return {
         "message": "Quiz submitted successfully",
         "score": score,
         "total": len(questions),
-        "progress_added": increment
-    }
-
-@app.post("/generate-quiz")
-def generate_quiz(data: schemas.AutoQuizCreate, db: Session = Depends(get_db)):
-    teacher = db.query(models.User).filter(
-        models.User.id == data.teacher_id,
-        models.User.role == "teacher"
-    ).first()
-
-    if not teacher:
-        return {"message": "Only teacher can generate quiz"}
-
-    course = db.query(models.Course).filter(
-        models.Course.id == data.course_id
-    ).first()
-
-    if not course:
-        return {"message": "Course not found"}
-
-    subject_key = detect_subject_key(course.title, getattr(course, "subject_code", ""))
-
-    if not subject_key or subject_key not in QUESTION_BANK:
-        return {"message": "No question bank available for this subject"}
-
-    bank = QUESTION_BANK[subject_key][:]
-    random.shuffle(bank)
-
-    selected = bank[:data.num_questions]
-
-    quiz = models.Quiz(
-        course_id=data.course_id,
-        teacher_id=data.teacher_id,
-        title=f"{data.title} ({data.difficulty.title()})"
-    )
-    db.add(quiz)
-    db.commit()
-    db.refresh(quiz)
-
-    for item in selected:
-        options = item["options"][:]
-        random.shuffle(options)
-
-        question = models.Question(
-            quiz_id=quiz.id,
-            question=item["question"],
-            option1=options[0],
-            option2=options[1],
-            option3=options[2],
-            option4=options[3],
-            correct_answer=item["correct"]
-        )
-        db.add(question)
-
-    db.commit()
-
-    return {
-        "message": "Quiz generated successfully",
-        "quiz_id": quiz.id,
-        "subject": subject_key,
-        "count": len(selected)
+        "progress_completed_topics": progress.completed_topics
     }
 
 def create_notification(db, message):
     notif = Notification(message=message)
     db.add(notif)
     db.commit()
+
+@app.post("/study-log")
+def create_study_log(data: schemas.StudyLogCreate, db: Session = Depends(get_db)):
+    log = models.StudyLog(
+        user_id=data.user_id,
+        course_id=data.course_id,
+        study_date=data.study_date,
+        hours=data.hours,
+        topic=data.topic
+    )
+
+    db.add(log)
+    db.commit()
+
+    recalculate_progress_intelligent(data.user_id, data.course_id, db)
+
+    return {"message": "Study logged successfully"}
+
+@app.get("/study-logs/{user_id}")
+def get_logs(user_id: int, db: Session = Depends(get_db)):
+    logs = db.query(models.StudyLog).filter(
+        models.StudyLog.user_id == user_id
+    ).order_by(models.StudyLog.study_date.desc()).all()
+
+    return logs
+
+@app.get("/smart-target/{user_id}")
+def get_smart_target(user_id: int, db: Session = Depends(get_db)):
+    progress_list = db.query(models.Progress).filter(
+        models.Progress.user_id == user_id
+    ).all()
+
+    result = []
+
+    for p in progress_list:
+        course = db.query(models.Course).filter(
+            models.Course.id == p.course_id
+        ).first()
+
+        if not course:
+            continue
+
+        remaining_topics = max(p.total_topics - p.completed_topics, 0)
+
+        related_assignments = db.query(models.Assignment).filter(
+            models.Assignment.subject_code == course.subject_code
+        ).all()
+
+        min_days = 7
+
+        for a in related_assignments:
+            try:
+                due = datetime.strptime(a.due_date, "%Y-%m-%d").date()
+                days_left = (due - date.today()).days
+                if days_left >= 0 and days_left < min_days:
+                    min_days = max(days_left, 1)
+            except:
+                pass
+
+        target_topics_per_day = round(remaining_topics / max(min_days, 1), 2) if remaining_topics > 0 else 0
+        recommended_hours_per_day = round(max(target_topics_per_day * 1.5, 1), 2) if remaining_topics > 0 else 0
+
+        result.append({
+            "course_id": p.course_id,
+            "course_title": course.title,
+            "subject_code": course.subject_code,
+            "target_topics_per_day": target_topics_per_day,
+            "recommended_hours_per_day": recommended_hours_per_day,
+            "remaining_topics": remaining_topics,
+            "days_left": min_days
+        })
+
+    return {"targets": result}
+
+@app.get("/consistency/{user_id}")
+def get_consistency(user_id: int, db: Session = Depends(get_db)):
+    week_ago = date.today() - timedelta(days=6)
+
+    logs = db.query(models.StudyLog).filter(
+        models.StudyLog.user_id == user_id,
+        models.StudyLog.study_date >= week_ago
+    ).all()
+
+    unique_days = len(set(log.study_date for log in logs))
+    score = round((unique_days / 7) * 100)
+
+    return {
+        "days_studied": unique_days,
+        "consistency_score": score
+    }
+
+@app.get("/weekly-summary/{user_id}")
+def weekly_summary(user_id: int, db: Session = Depends(get_db)):
+    week_ago = date.today() - timedelta(days=6)
+
+    logs = db.query(models.StudyLog).filter(
+        models.StudyLog.user_id == user_id,
+        models.StudyLog.study_date >= week_ago
+    ).all()
+
+    total_hours = sum(l.hours for l in logs)
+    unique_days = len(set(l.study_date for l in logs))
+
+    return {
+        "total_hours": round(total_hours, 2),
+        "days_studied": unique_days,
+        "consistency": round((unique_days / 7) * 100)
+    }
+
+@app.get("/reminders/{user_id}")
+def get_reminders(user_id: int, db: Session = Depends(get_db)):
+    create_daily_reminders_for_user(user_id, db)
+
+    reminders = db.query(models.Reminder).filter(
+        models.Reminder.user_id == user_id
+    ).order_by(models.Reminder.created_at.desc()).all()
+
+    return {"reminders": reminders}
+
+
+@app.put("/reminders/read/{reminder_id}")
+def mark_reminder_read(reminder_id: int, db: Session = Depends(get_db)):
+    reminder = db.query(models.Reminder).filter(
+        models.Reminder.id == reminder_id
+    ).first()
+
+    if reminder:
+        reminder.is_read = 1
+        db.commit()
+
+    return {"message": "Reminder marked as read"}
+
+@app.get("/today-study/{user_id}")
+def today_study(user_id: int, db: Session = Depends(get_db)):
+    today = date.today()
+
+    logs = db.query(models.StudyLog).filter(
+        models.StudyLog.user_id == user_id,
+        models.StudyLog.study_date == today
+    ).all()
+
+    total = sum(l.hours for l in logs)
+
+    return {
+        "today_hours": round(total, 2),
+        "target_hours": 3  # static for now
+    }
+
+@app.post("/smart-auto-plan/{user_id}")
+def smart_auto_plan(user_id: int, db: Session = Depends(get_db)):
+    assignments = db.query(models.Assignment).all()
+    today = date.today()
+    created_count = 0
+
+    for a in assignments:
+        if not a.course_id:
+            continue
+
+        try:
+            due_date = datetime.strptime(a.due_date, "%Y-%m-%d").date()
+        except:
+            continue
+
+        if due_date < today:
+            continue
+
+        topics = [t.strip() for t in a.description.split(",") if t.strip()]
+
+        if not topics:
+            topics = [a.title]
+
+        current_date = today
+
+        for topic in topics:
+            exists = db.query(models.StudyPlanner).filter(
+                models.StudyPlanner.user_id == user_id,
+                models.StudyPlanner.course_id == a.course_id,
+                models.StudyPlanner.topic == topic
+            ).first()
+
+            if not exists:
+                plan = models.StudyPlanner(
+                    user_id=user_id,
+                    course_id=a.course_id,
+                    study_date=current_date.strftime("%Y-%m-%d"),
+                    topic=topic,
+                    status="Pending"
+                )
+
+                db.add(plan)
+                created_count += 1
+
+                if current_date < due_date:
+                    current_date += timedelta(days=1)
+
+    db.commit()
+
+    return {
+        "message": f"{created_count} smart plans generated successfully"
+    }
+
+def update_streak(user_id: int, db: Session):
+    today = date.today()
+
+    streak = db.query(models.UserStreak).filter(
+        models.UserStreak.user_id == user_id
+    ).first()
+
+    if not streak:
+        streak = models.UserStreak(
+            user_id=user_id,
+            current_streak=1,
+            longest_streak=1,
+            last_study_date=today
+        )
+        db.add(streak)
+        db.commit()
+        return
+
+    if streak.last_study_date == today:
+        return
+
+    if streak.last_study_date == today - timedelta(days=1):
+        streak.current_streak += 1
+    else:
+        streak.current_streak = 1
+
+    if streak.current_streak > streak.longest_streak:
+        streak.longest_streak = streak.current_streak
+
+    streak.last_study_date = today
+    db.commit()
+
+@app.get("/streak/{user_id}")
+def get_streak(user_id: int, db: Session = Depends(get_db)):
+    streak = db.query(models.UserStreak).filter(
+        models.UserStreak.user_id == user_id
+    ).first()
+
+    if not streak:
+        return {
+            "current_streak": 0,
+            "longest_streak": 0
+        }
+
+    return {
+        "current_streak": streak.current_streak,
+        "longest_streak": streak.longest_streak
+    }
+
+@app.get("/quiz-analytics/{course_id}")
+def quiz_analytics(course_id: int, db: Session = Depends(get_db)):
+    quizzes = db.query(models.Quiz).filter(
+        models.Quiz.course_id == course_id
+    ).all()
+
+    quiz_ids = [q.id for q in quizzes]
+
+    results = db.query(models.QuizResult).filter(
+        models.QuizResult.quiz_id.in_(quiz_ids)
+    ).all() if quiz_ids else []
+
+    if not results:
+        return {
+            "total_attempts": 0,
+            "average_score": 0,
+            "highest_score": 0,
+            "lowest_score": 0
+        }
+
+    scores = [r.score for r in results]
+
+    return {
+        "total_attempts": len(results),
+        "average_score": round(sum(scores) / len(scores), 2),
+        "highest_score": max(scores),
+        "lowest_score": min(scores)
+    }
+@app.get("/analytics/{user_id}")
+def get_analytics(user_id: int, db: Session = Depends(get_db)):
+    quizzes = db.query(models.QuizResult).filter(
+        models.QuizResult.user_id == user_id
+    ).all()
+
+    if quizzes:
+        avg_score = int(sum(q.score for q in quizzes) / len(quizzes))
+    else:
+        avg_score = 0
+
+    weak_subject = "N/A"
+    if quizzes:
+        weak = sorted(quizzes, key=lambda x: x.score)[0]
+        weak_subject = weak.subject_code
+
+    study_hours = 0  # optional integrate later
+
+    return {
+        "avg_score": avg_score,
+        "total_quizzes": len(quizzes),
+        "weak_subject": weak_subject,
+        "study_hours": study_hours
+    }
