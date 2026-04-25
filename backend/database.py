@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
-DATABASE_URL = "mysql+pymysql://root:Pavan%409589@localhost:3306/LMS"
+DATABASE_URL = []
 
 engine = create_engine(DATABASE_URL)
 
