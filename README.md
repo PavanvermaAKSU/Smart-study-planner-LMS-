@@ -50,7 +50,7 @@ The main goal of this project is to improve digital learning by making education
 ```bash
 LMS/
 │
-├── backend/                 # FastAPI backend
+├── backend/                 # FastAPI 
 │   ├── main.py
 │   ├── models.py
 │   ├── schemas.py
@@ -58,12 +58,11 @@ LMS/
 │   ├── routes/
 │   └── requirements.txt
 │
-├── frontend/lms_frontend                # React frontend
+├── frontend/lms_frontend                 
 │   ├── src/
 │   ├── public/
 │   ├── package.json
 │   └── components/
-│
-├── docker-compose.yml
+|
 ├── .gitignore
 └── README.md
