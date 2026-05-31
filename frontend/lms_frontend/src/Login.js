@@ -25,7 +25,7 @@ function Login() {
     e.preventDefault();
 
     try {
-      const response = await axios.post("http://127.0.0.1:8000/login", formData);
+      const response = await axios.post("https://smart-study-planner-lms-1.onrender.com/login", formData);
 
       console.log("LOGIN RESPONSE:", response.data);
 

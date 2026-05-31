@@ -30,9 +30,9 @@ function AssignmentsStudent() {
 
   const loadCourses = async () => {
     try {
-      const coursesRes = await axios.get("http://127.0.0.1:8000/courses");
+      const coursesRes = await axios.get("https://smart-study-planner-lms-1.onrender.com/courses");
       const enrollRes = await axios.get(
-        `http://127.0.0.1:8000/enrollments/${studentId}`
+        `https://smart-study-planner-lms-1.onrender.com/enrollments/${studentId}`
       );
 
       const enrolledIds = enrollRes.data.map((e) => e.course_id);
@@ -55,7 +55,7 @@ function AssignmentsStudent() {
     }
 
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/assignments/${subjectCode}`);
+      const res = await axios.get(`https://smart-study-planner-lms-1.onrender.com/assignments/${subjectCode}`);
       setAssignments(res.data.assignments || []);
     } catch (err) {
       console.error(err);
@@ -92,7 +92,7 @@ function AssignmentsStudent() {
       formData.append("file", file);
 
       const res = await axios.post(
-        "http://127.0.0.1:8000/submit-assignment",
+        "https://smart-study-planner-lms-1.onrender.com/submit-assignment",
         formData,
         {
           headers: {

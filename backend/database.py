@@ -1,16 +1,15 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+import os
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL environment variable is missing. Add it in Railway Variables.")
+DATABASE_URL = []
 
 engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
+# ✅ THIS WAS MISSING
 Base = declarative_base()
 
 def get_db():

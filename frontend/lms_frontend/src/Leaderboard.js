@@ -7,7 +7,7 @@ function Leaderboard() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/leaderboard")
+    axios.get("https://smart-study-planner-lms-1.onrender.com/leaderboard")
       .then(res => setData(res.data))
       .catch(err => console.error(err));
   }, []);

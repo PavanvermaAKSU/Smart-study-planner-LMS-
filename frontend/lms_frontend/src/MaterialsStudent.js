@@ -23,7 +23,7 @@ function MaterialsStudent() {
 
     try {
       const res = await axios.get(
-        `http://127.0.0.1:8000/materials/${subjectCode}`
+        `https://smart-study-planner-lms-1.onrender.com/materials/${subjectCode}`
       );
 
       setMaterials(res.data.materials || []);
@@ -37,7 +37,7 @@ function MaterialsStudent() {
   };
 
   const renderFile = (fileUrl) => {
-    const fullUrl = `http://127.0.0.1:8000/${fileUrl}`;
+    const fullUrl = `https://smart-study-planner-lms-1.onrender.com/${fileUrl}`;
     const lower = fileUrl.toLowerCase();
 
     if (

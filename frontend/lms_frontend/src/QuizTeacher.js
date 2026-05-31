@@ -32,7 +32,7 @@ function QuizTeacher() {
 
   const loadCourses = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/courses");
+      const res = await axios.get("https://smart-study-planner-lms-1.onrender.com/courses");
       const myCourses = (res.data.courses || []).filter(
         (c) => String(c.teacher_id) === String(teacherId)
       );
@@ -49,7 +49,7 @@ function QuizTeacher() {
     }
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/create-quiz", {
+      const res = await axios.post("https://smart-study-planner-lms-1.onrender.com/create-quiz", {
         course_id: Number(courseId),
         teacher_id: Number(teacherId),
         title: quizTitle.trim()
@@ -87,7 +87,7 @@ function QuizTeacher() {
     try {
       setLoading(true);
 
-      await axios.post("http://127.0.0.1:8000/add-question", {
+      await axios.post("https://smart-study-planner-lms-1.onrender.com/add-question", {
         quiz_id: Number(quizId),
         question: question.trim(),
         option1: options[0].trim(),

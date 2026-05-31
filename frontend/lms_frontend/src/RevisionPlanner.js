@@ -8,7 +8,7 @@ function RevisionPlanner() {
   const [revisions, setRevisions] = useState([]);
 
   useEffect(() => {
-    axios.get(`http://127.0.0.1:8000/revisions/${userId}`)
+    axios.get(`https://smart-study-planner-lms-1.onrender.com/revisions/${userId}`)
       .then(res => setRevisions(res.data))
       .catch(err => console.error(err));
   }, []);

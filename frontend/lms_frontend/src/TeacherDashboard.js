@@ -33,7 +33,7 @@ function TeacherDashboard() {
 
   const fetchCourses = useCallback(async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:8000/courses");
+      const response = await axios.get("https://smart-study-planner-lms-1.onrender.com/courses");
       const allCourses = response.data.courses || [];
 
       const myCourses = allCourses.filter(
@@ -70,7 +70,7 @@ function TeacherDashboard() {
   const handleDelete = async (courseId) => {
     try {
       const res = await axios.delete(
-        `http://127.0.0.1:8000/delete-course/${courseId}`
+        `https://smart-study-planner-lms-1.onrender.com/delete-course/${courseId}`
       );
       setAlert({ message: res.data.message, type: "success" });
       fetchCourses();
@@ -97,12 +97,12 @@ function TeacherDashboard() {
       let res;
       if (editCourseId) {
         res = await axios.put(
-          `http://127.0.0.1:8000/update-course/${editCourseId}`,
+          `https://smart-study-planner-lms-1.onrender.com/update-course/${editCourseId}`,
           payload
         );
       } else {
         res = await axios.post(
-          "http://127.0.0.1:8000/create-course",
+          "https://smart-study-planner-lms-1.onrender.com/create-course",
           payload
         );
       }

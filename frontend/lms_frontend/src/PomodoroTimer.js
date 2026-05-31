@@ -16,7 +16,7 @@ function PomodoroTimer() {
   const [courses, setCourses] = useState([]);
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/courses").then((res) => {
+    axios.get("https://smart-study-planner-lms-1.onrender.com/courses").then((res) => {
       setCourses(res.data.courses || []);
     });
   }, []);
@@ -48,7 +48,7 @@ function PomodoroTimer() {
   const handleAutoSave = async () => {
     if (!courseId || !topic) return;
 
-    await axios.post("http://127.0.0.1:8000/study-log", {
+    await axios.post("https://smart-study-planner-lms-1.onrender.com/study-log", {
       user_id: parseInt(userId),
       course_id: parseInt(courseId),
       study_date: new Date().toISOString().split("T")[0],

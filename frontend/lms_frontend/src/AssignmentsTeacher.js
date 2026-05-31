@@ -39,7 +39,7 @@ function AssignmentsTeacher() {
 
   const loadCourses = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/courses");
+      const res = await axios.get("https://smart-study-planner-lms-1.onrender.com/courses");
       const all = res.data.courses || [];
       setCourses(all.filter((c) => String(c.teacher_id) === String(teacherId)));
     } catch (err) {
@@ -55,7 +55,7 @@ function AssignmentsTeacher() {
     }
 
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/assignments/${subjectCode}`);
+      const res = await axios.get(`https://smart-study-planner-lms-1.onrender.com/assignments/${subjectCode}`);
       setAssignments(res.data.assignments || []);
     } catch (err) {
       console.error(err);
@@ -72,7 +72,7 @@ function AssignmentsTeacher() {
 
     try {
       const res = await axios.get(
-        `http://127.0.0.1:8000/assignment-submissions/${assignmentId}`
+        `https://smart-study-planner-lms-1.onrender.com/assignment-submissions/${assignmentId}`
       );
       setSubmissions(res.data.submissions || []);
     } catch (err) {
@@ -120,7 +120,7 @@ function AssignmentsTeacher() {
         due_date: form.due_date
       };
 
-      const res = await axios.post("http://127.0.0.1:8000/create-assignment", payload);
+      const res = await axios.post("https://smart-study-planner-lms-1.onrender.com/create-assignment", payload);
 
       setAlert({
         message: res.data.message || "Assignment created successfully",
@@ -332,7 +332,7 @@ function AssignmentsTeacher() {
                 {s.file_url && (
                   <a
                     className="btn btn-info"
-                    href={`http://127.0.0.1:8000${s.file_url}`}
+                    href={`https://smart-study-planner-lms-1.onrender.com${s.file_url}`}
                     target="_blank"
                     rel="noreferrer"
                   >

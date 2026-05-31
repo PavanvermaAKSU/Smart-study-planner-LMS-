@@ -27,12 +27,12 @@ function Planner() {
 
   const loadData = async () => {
     try {
-      const planRes = await axios.get(`http://127.0.0.1:8000/planner/${userId}`);
+      const planRes = await axios.get(`https://smart-study-planner-lms-1.onrender.com/planner/${userId}`);
       setPlans(planRes.data.plans || []);
 
-      const courseRes = await axios.get("http://127.0.0.1:8000/courses");
+      const courseRes = await axios.get("https://smart-study-planner-lms-1.onrender.com/courses");
       const enrollRes = await axios.get(
-        `http://127.0.0.1:8000/enrollments/${userId}`
+        `https://smart-study-planner-lms-1.onrender.com/enrollments/${userId}`
       );
 
       const enrolledIds = enrollRes.data.map((item) => item.course_id);
@@ -67,7 +67,7 @@ function Planner() {
     }
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/create-plan", {
+      const res = await axios.post("https://smart-study-planner-lms-1.onrender.com/create-plan", {
         user_id: Number(userId),
         course_id: Number(form.course_id),
         study_date: form.study_date,

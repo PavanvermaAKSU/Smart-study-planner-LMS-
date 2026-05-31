@@ -12,7 +12,7 @@ function ReminderPanel() {
 
   const loadReminders = async () => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/reminders/${userId}`);
+      const res = await axios.get(`https://smart-study-planner-lms-1.onrender.com/reminders/${userId}`);
       setReminders(res.data.reminders || []);
     } catch (err) {
       console.error(err);
@@ -24,7 +24,7 @@ function ReminderPanel() {
   }, []);
 
   const markRead = async (id) => {
-    await axios.put(`http://127.0.0.1:8000/reminders/read/${id}`);
+    await axios.put(`https://smart-study-planner-lms-1.onrender.com/reminders/read/${id}`);
     loadReminders();
   };
 

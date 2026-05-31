@@ -30,19 +30,17 @@ function StudentDashboard() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const courseRes = await axios.get("http://127.0.0.1:8000/courses");
+      const courseRes = await axios.get("https://smart-study-planner-lms-1.onrender.com/courses");
       const allCourses = courseRes.data.courses || [];
 
-      const enrollRes = await axios.get(
-        `http://127.0.0.1:8000/enrollments/${userId}`
-      );
+      const enrollRes = await axios.get(`https://smart-study-planner-lms-1.onrender.com/enrollments/${userId}`);
 
       const enrolledIds = enrollRes.data.map((e) => e.course_id);
       const myCourses = allCourses.filter((c) => enrolledIds.includes(c.id));
       setCourses(myCourses);
 
       const progressRes = await axios.get(
-        `http://127.0.0.1:8000/progress/${userId}`
+        `https://smart-study-planner-lms-1.onrender.com/progress/${userId}`
       );
 
       const progressMap = {};
@@ -58,7 +56,7 @@ function StudentDashboard() {
 
       try {
         const weeklyRes = await axios.get(
-          `http://127.0.0.1:8000/weekly-summary/${userId}`
+          `https://smart-study-planner-lms-1.onrender.com/weekly-summary/${userId}`
         );
         setWeekly(weeklyRes.data);
       } catch {
@@ -76,7 +74,7 @@ function StudentDashboard() {
   const handleProgress = async (courseId, value) => {
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/update-progress",
+        "https://smart-study-planner-lms-1.onrender.com/update-progress",
         {
           user_id: parseInt(userId),
           course_id: courseId,

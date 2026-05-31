@@ -23,11 +23,11 @@ function SmartPlannerAdvanced() {
 
   const loadData = async () => {
     try {
-      const planRes = await axios.get(`http://127.0.0.1:8000/planner/${userId}`);
+      const planRes = await axios.get(`https://smart-study-planner-lms-1.onrender.com/planner/${userId}`);
       setPlans(planRes.data.plans || []);
 
       const targetRes = await axios.get(
-        `http://127.0.0.1:8000/smart-target/${userId}`
+        `https://smart-study-planner-lms-1.onrender.com/smart-target/${userId}`
       );
       setTargets(targetRes.data.targets || []);
     } catch (err) {
@@ -48,7 +48,7 @@ function SmartPlannerAdvanced() {
       setLoading(true);
 
       const res = await axios.post(
-        `http://127.0.0.1:8000/smart-auto-plan/${userId}`
+        `https://smart-study-planner-lms-1.onrender.com/smart-auto-plan/${userId}`
       );
 
       console.log("SMART PLAN:", res.data);

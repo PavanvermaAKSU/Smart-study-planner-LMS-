@@ -19,7 +19,7 @@ function QuizAnalytics() {
   });
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/courses").then((res) => {
+    axios.get("https://smart-study-planner-lms-1.onrender.com/courses").then((res) => {
       const allCourses = res.data.courses || [];
       setCourses(
         allCourses.filter((c) => String(c.teacher_id) === String(teacherId))
@@ -28,7 +28,7 @@ function QuizAnalytics() {
   }, [teacherId]);
 
   const loadAnalytics = async (courseId) => {
-    const res = await axios.get(`http://127.0.0.1:8000/quiz-analytics/${courseId}`);
+    const res = await axios.get(`https://smart-study-planner-lms-1.onrender.com/quiz-analytics/${courseId}`);
     setAnalytics(res.data);
   };
 

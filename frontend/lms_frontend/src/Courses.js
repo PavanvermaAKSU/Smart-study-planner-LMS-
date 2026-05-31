@@ -24,14 +24,14 @@ function Courses() {
 
   const fetchCourses = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/courses");
+      const res = await axios.get("https://smart-study-planner-lms-1.onrender.com/courses");
       const allCourses = res.data.courses || [];
       setCourses(allCourses);
       setFilteredCourses(allCourses);
 
       if (role === "student") {
         const enrollRes = await axios.get(
-          `http://127.0.0.1:8000/enrollments/${userId}`
+          `https://smart-study-planner-lms-1.onrender.com/enrollments/${userId}`
         );
         setEnrolledIds(enrollRes.data.map((e) => e.course_id));
       }
@@ -60,7 +60,7 @@ function Courses() {
 
   const handleEnroll = async (courseId) => {
     try {
-      const res = await axios.post("http://127.0.0.1:8000/enroll", {
+      const res = await axios.post("https://smart-study-planner-lms-1.onrender.com/enroll", {
         user_id: parseInt(userId),
         course_id: courseId
       });

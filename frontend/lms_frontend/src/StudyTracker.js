@@ -28,19 +28,19 @@ function StudyTracker() {
 
   const loadData = async () => {
     try {
-      const c = await axios.get("http://127.0.0.1:8000/courses");
-      const e = await axios.get(`http://127.0.0.1:8000/enrollments/${userId}`);
+      const c = await axios.get("hhttps://smart-study-planner-lms-1.onrender.com/courses");
+      const e = await axios.get(`hhttps://smart-study-planner-lms-1.onrender.com/enrollments/${userId}`);
       const ids = e.data.map((i) => i.course_id);
 
       setCourses((c.data.courses || []).filter((x) => ids.includes(x.id)));
 
-      const l = await axios.get(`http://127.0.0.1:8000/study-logs/${userId}`);
+      const l = await axios.get(`hhttps://smart-study-planner-lms-1.onrender.com/study-logs/${userId}`);
       setLogs(l.data.logs || []);
 
-      const t = await axios.get(`http://127.0.0.1:8000/today-study/${userId}`);
+      const t = await axios.get(`hhttps://smart-study-planner-lms-1.onrender.com/today-study/${userId}`);
       setToday(t.data);
 
-      const w = await axios.get(`http://127.0.0.1:8000/weekly-summary/${userId}`);
+      const w = await axios.get(`hhttps://smart-study-planner-lms-1.onrender.com/weekly-summary/${userId}`);
       setWeekly(w.data);
     } catch (err) {
       console.log(err);
@@ -55,7 +55,7 @@ function StudyTracker() {
     e.preventDefault();
 
     try {
-      await axios.post("http://127.0.0.1:8000/study-log", {
+      await axios.post("https://smart-study-planner-lms-1.onrender.com/study-log", {
         user_id: parseInt(userId),
         course_id: parseInt(form.course_id),
         study_date: new Date().toISOString().split("T")[0],

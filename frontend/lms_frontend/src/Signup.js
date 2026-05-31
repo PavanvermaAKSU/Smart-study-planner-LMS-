@@ -42,7 +42,7 @@ function Signup() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://127.0.0.1:8000/register",
+        "https://smart-study-planner-lms-1.onrender.com/register",
         form
       );
 

@@ -28,7 +28,7 @@ function AnalyticsDashboard() {
   const loadAnalytics = async () => {
     try {
       const res = await axios.get(
-        `http://127.0.0.1:8000/analytics/${userId}`
+        `https://smart-study-planner-lms-1.onrender.com/analytics/${userId}`
       );
 
       setData(res.data);
