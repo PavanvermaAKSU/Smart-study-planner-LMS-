@@ -22,3 +22,10 @@ backend/__pycache__/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+node_modules/
+frontend/lms_frontend/node_modules/
+build/
+frontend/lms_frontend/build/
+.env
+.cache/
